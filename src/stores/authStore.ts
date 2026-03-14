@@ -13,7 +13,7 @@ interface AuthState {
   token: string | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (email: string, password: string, nickname: string) => Promise<void>
+  register: (email: string, password: string, nickname: string, userType?: User['user_type']) => Promise<void>
   logout: () => void
   setUser: (user: User | null) => void
 }
@@ -47,7 +47,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  register: async (email: string, password: string, nickname: string) => {
+  register: async (email: string, password: string, nickname: string, userType: User['user_type'] = 'user') => {
     set({ isLoading: true })
     try {
       const response = await fetch('/api/auth/register', {
@@ -55,7 +55,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, nickname }),
+        body: JSON.stringify({ email, password, nickname, user_type: userType }),
       })
 
       if (!response.ok) {

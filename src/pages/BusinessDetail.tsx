@@ -1,9 +1,11 @@
-import { useState, useEffect, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { Star, MapPin, Phone, Clock, MessageCircle } from 'lucide-react'
+import { useAuthStore } from '../stores/authStore'
 
 interface Business {
   id: string
+  owner_id?: string | null
   name: string
   category: {
     id: string
@@ -38,12 +40,17 @@ interface Review {
 
 export default function BusinessDetail() {
   const { id } = useParams<{ id: string }>()
+  const { user, token } = useAuthStore()
   const [business, setBusiness] = useState<Business | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
   const [newReview, setNewReview] = useState('')
   const [newRating, setNewRating] = useState(5)
   const [submitting, setSubmitting] = useState(false)
+  const [newImageUrl, setNewImageUrl] = useState('')
+  const [newImageFile, setNewImageFile] = useState<File | null>(null)
+  const [imageSubmitting, setImageSubmitting] = useState(false)
+  const [imageError, setImageError] = useState('')
 
   useEffect(() => {
     fetchBusinessDetail()
@@ -102,6 +109,104 @@ export default function BusinessDetail() {
       console.error('提交评价失败:', error)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const canManageImages = user?.user_type === 'merchant'
+
+  const handleImageFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    setNewImageFile(file)
+  }
+
+  const handleUploadImageFile = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!id) return
+    if (!newImageFile) return
+    setImageError('')
+    setImageSubmitting(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', newImageFile)
+
+      const response = await fetch(`/api/businesses/${id}/images/upload`, {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      })
+
+      const data = await response.json().catch(() => null)
+      if (!response.ok) {
+        setImageError(data?.error || '上传图片失败')
+        return
+      }
+
+      setBusiness((prev) => (prev ? { ...prev, images: data.images || prev.images, owner_id: data.owner_id } : prev))
+      setNewImageFile(null)
+    } catch (error) {
+      setImageError('上传图片失败')
+    } finally {
+      setImageSubmitting(false)
+    }
+  }
+
+  const handleAddImage = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!id) return
+    const url = newImageUrl.trim()
+    if (!url) return
+    setImageError('')
+    setImageSubmitting(true)
+    try {
+      const response = await fetch(`/api/businesses/${id}/images`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ url }),
+      })
+
+      const data = await response.json().catch(() => null)
+      if (!response.ok) {
+        setImageError(data?.error || '添加图片失败')
+        return
+      }
+
+      setBusiness((prev) => (prev ? { ...prev, images: data.images || prev.images, owner_id: data.owner_id } : prev))
+      setNewImageUrl('')
+    } catch (error) {
+      setImageError('添加图片失败')
+    } finally {
+      setImageSubmitting(false)
+    }
+  }
+
+  const handleRemoveImage = async (url: string) => {
+    if (!id) return
+    setImageError('')
+    setImageSubmitting(true)
+    try {
+      const response = await fetch(`/api/businesses/${id}/images?url=${encodeURIComponent(url)}`, {
+        method: 'DELETE',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+
+      const data = await response.json().catch(() => null)
+      if (!response.ok) {
+        setImageError(data?.error || '删除图片失败')
+        return
+      }
+
+      setBusiness((prev) => (prev ? { ...prev, images: data.images || prev.images, owner_id: data.owner_id } : prev))
+    } catch (error) {
+      setImageError('删除图片失败')
+    } finally {
+      setImageSubmitting(false)
     }
   }
 
@@ -169,6 +274,84 @@ export default function BusinessDetail() {
             <p className="text-gray-700 leading-relaxed">{business.description}</p>
           </div>
         </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">店铺图片</h2>
+          <span className="text-sm text-gray-500">{business.images?.length || 0} 张</span>
+        </div>
+
+        {business.images && business.images.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {business.images.map((img, idx) => (
+              <div key={`${img}-${idx}`} className="group relative overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                <img src={img} alt={`商家图片 ${idx + 1}`} className="h-28 w-full object-cover" />
+                {canManageImages && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(img)}
+                    disabled={imageSubmitting}
+                    className="absolute right-2 top-2 rounded-md bg-black/60 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 disabled:opacity-50"
+                  >
+                    删除
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-gray-500">
+            暂无图片
+          </div>
+        )}
+
+        {canManageImages && (
+          <div className="space-y-4">
+            <form onSubmit={handleUploadImageFile} className="space-y-3">
+              <div className="text-sm text-gray-600">
+                商家可上传本地图片文件，首次上传会自动认领该店铺（仅原型功能）。
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageFileChange}
+                  className="flex-1 rounded-md border border-gray-300 px-3 py-2 bg-white"
+                />
+                <button
+                  type="submit"
+                  disabled={imageSubmitting || !newImageFile}
+                  className="rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700 disabled:opacity-50"
+                >
+                  {imageSubmitting ? '上传中...' : '上传图片'}
+                </button>
+              </div>
+            </form>
+
+            <form onSubmit={handleAddImage} className="space-y-3">
+              <div className="text-sm text-gray-600">或使用图片链接添加。</div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="url"
+                  value={newImageUrl}
+                  onChange={(e) => setNewImageUrl(e.target.value)}
+                  placeholder="请输入图片 URL（https://...）"
+                  className="flex-1 rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+                <button
+                  type="submit"
+                  disabled={imageSubmitting || !newImageUrl.trim()}
+                  className="rounded-md bg-gray-900 px-4 py-2 text-white hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {imageSubmitting ? '处理中...' : '添加链接'}
+                </button>
+              </div>
+            </form>
+
+            {imageError && <div className="text-sm text-red-600">{imageError}</div>}
+          </div>
+        )}
       </div>
 
       {/* 评价区域 */}

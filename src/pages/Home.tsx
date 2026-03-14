@@ -66,14 +66,33 @@ export default function Home() {
               <Link
                 key={business.id}
                 to={`/business/${business.id}`}
-                className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-6"
+                className="group bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden border border-gray-100"
               >
-                <div className="space-y-3">
+                <div className="relative h-40 bg-gradient-to-br from-primary-50 to-gray-50">
+                  {business.images && business.images.length > 0 ? (
+                    <img
+                      src={business.images[0]}
+                      alt={business.name}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center">
+                      <div className="h-16 w-16 rounded-full bg-white/70 border border-gray-200 flex items-center justify-center text-2xl font-bold text-primary-700">
+                        {business.name.slice(0, 1)}
+                      </div>
+                    </div>
+                  )}
+                  <div className="absolute left-4 top-4 text-xs text-gray-600 bg-white/90 backdrop-blur px-2 py-1 rounded-full border border-gray-200">
+                    {business.category.name}
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-3">
                   <div className="flex items-start justify-between">
-                    <h3 className="text-lg font-semibold text-gray-900">{business.name}</h3>
-                    <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                      {business.category.name}
-                    </span>
+                    <h3 className="text-lg font-semibold text-gray-900 group-hover:text-primary-700 transition-colors">
+                      {business.name}
+                    </h3>
                   </div>
                   
                   <div className="flex items-center space-x-2">

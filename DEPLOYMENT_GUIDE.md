@@ -63,6 +63,18 @@ GRANT SELECT ON reviews TO anon, authenticated;
 GRANT INSERT, UPDATE, DELETE ON reviews TO authenticated;
 ```
 
+## 图片存储（Supabase Storage）
+
+商家上传本地图片文件会将图片存储到 Supabase Storage，并把图片的公开 URL 写入 `businesses.images` 字段。
+
+### 1. 创建 Storage Bucket
+1. 进入 Supabase 控制台 → Storage → Buckets
+2. 新建 bucket：`business-images`
+3. 访问权限：选择 Public（公开桶，便于前端直接展示图片）
+
+### 2. 验证桶是否可访问
+上传任意图片到 bucket 后，点击文件获取 Public URL，在浏览器打开能正常显示即可。
+
 ## 后端部署（Railway）
 
 ### 1. 准备后端代码
@@ -161,6 +173,21 @@ NODE_ENV=production
 #### 前端 (.env)
 ```bash
 VITE_API_URL=https://your-backend.railway.app
+```
+
+## 单台服务器（Nginx）部署注意事项（图片上传）
+
+如果你在自建服务器上使用 Nginx 反向代理 `/api`，默认上传体积可能只有 1MB，图片上传会失败（413/502）。
+建议在你的站点 `server {}` 中增加：
+
+```nginx
+client_max_body_size 10m;
+```
+
+修改后执行：
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
 ### 部署验证清单

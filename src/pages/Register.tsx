@@ -6,6 +6,7 @@ export default function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [nickname, setNickname] = useState('')
+  const [userType, setUserType] = useState<'user' | 'merchant'>('user')
   const [error, setError] = useState('')
   const { register, isLoading } = useAuthStore()
   const navigate = useNavigate()
@@ -15,7 +16,7 @@ export default function Register() {
     setError('')
     
     try {
-      await register(email, password, nickname)
+      await register(email, password, nickname, userType)
       navigate('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : '注册失败')
@@ -45,6 +46,39 @@ export default function Register() {
           )}
           
           <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">账号类型</label>
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setUserType('user')}
+                  className={`rounded-md border px-3 py-2 text-sm transition-colors ${
+                    userType === 'user'
+                      ? 'border-primary-600 bg-primary-50 text-primary-700'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  普通用户
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUserType('merchant')}
+                  className={`rounded-md border px-3 py-2 text-sm transition-colors ${
+                    userType === 'merchant'
+                      ? 'border-primary-600 bg-primary-50 text-primary-700'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  商家用户
+                </button>
+              </div>
+              {userType === 'merchant' && (
+                <div className="mt-2 text-xs text-gray-500">
+                  商家用户可管理店铺图片与回复评价。
+                </div>
+              )}
+            </div>
+
             <div>
               <label htmlFor="nickname" className="block text-sm font-medium text-gray-700">
                 昵称

@@ -8,12 +8,14 @@ const router = express.Router()
 // 用户注册
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, nickname } = req.body
+    const { email, password, nickname, user_type } = req.body
 
     // 验证输入
     if (!email || !password || !nickname) {
       return res.status(400).json({ error: '缺少必要信息' })
     }
+
+    const nextUserType = user_type === 'merchant' ? 'merchant' : 'user'
 
     // 检查邮箱是否已存在
     const { data: existingUser, error: existingUserError } = await supabaseAdmin
@@ -40,7 +42,7 @@ router.post('/register', async (req, res) => {
         email,
         password_hash: hashedPassword,
         nickname,
-        user_type: 'user'
+        user_type: nextUserType
       }])
       .select()
       .single()
